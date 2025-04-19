@@ -9,10 +9,10 @@
         <div v-for="habit in habits" :key="habit.name">
           <span>{{ habit.name }}（{{ habit.point }}pt）</span>
           <button
-            @click="toggleCheck(habit.name, today)"
-            :class="['habit-cell', { checked: isChecked(habit.name, today) }]"
+            @click="toggleCheck(habit.name)"
+            :class="['habit-cell', { checked: isChecked(habit.name) }]"
           >
-            {{ isChecked(habit.name, today) ? habit.point : '' }}
+            {{ isChecked(habit.name) ? habit.point : '' }}
           </button>
         </div>
       </div>
@@ -33,12 +33,16 @@
             <tr>
               <th>習慣</th>
               <th>ポイント</th>
-              <th v-for="day in weekDays" :key="day">{{ day }}</th>
+              <th v-for="day in weekDays" :key="day">
+                {{ day }}
+              </th>
             </tr>
             <tr>
               <th></th>
               <th></th>
-              <th v-for="date in formattedDates" :key="date" class="date-cell">{{ date }}</th>
+              <th v-for="(date, i) in displayDates" :key="formattedDates[i]" class="date-cell" @click="selectDate(formattedDates[i])">
+                {{ date }}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -85,7 +89,7 @@ const weekDates = computed(() =>
 )
 
 const formattedDates = computed(() =>
-  weekDates.value.map(date => format(date, 'M/d'))
+  weekDates.value.map(date => format(date, 'yyyy-MM-dd')) // ← Habitデータと同じ形式にする！
 )
 
 const weekDays = computed(() =>
@@ -148,15 +152,15 @@ const habits = reactive([
   { name: '散歩', point: 20, checks: {}, category: 'その他' },
 ])
 
-const isChecked = (habitName, date) => {
+const isChecked = (habitName, date = selectedDate.value) => {
   const habit = habits.find(h => h.name === habitName)
   return habit.checks[date] || false
 }
 
-const toggleCheck = (habitName, date) => {
+const toggleCheck = (habitName, date = selectedDate.value) => {
   const habit = habits.find(h => h.name === habitName)
   habit.checks[date] = !habit.checks[date]
-  saveHabitsToLocalStorage() // ← チェック状態保存
+  saveHabitsToLocalStorage()
 }
 
 const columnTotals = computed(() => {
@@ -168,7 +172,7 @@ const columnTotals = computed(() => {
 })
 
 const isDailyMode = ref(false)
-const selectedDate = ref(formattedDates.value[0]) // 最初の日を初期値に
+const selectedDate = ref(format(new Date(), 'yyyy-MM-dd'))
 
 const toggleMode = () => {
   isDailyMode.value = !isDailyMode.value
@@ -196,10 +200,11 @@ const dailyHabitsByCategory = computed(() => {
 const dailyCategoryTotals = computed(() => {
   const result = {}
   Object.entries(dailyHabitsByCategory.value).forEach(([cat, habits]) => {
-    result[cat] = habits.reduce((sum, h) => sum + (h.checks[today.value] ? h.point : 0), 0)
+    result[cat] = habits.reduce((sum, h) => sum + (h.checks[selectedDate.value] ? h.point : 0), 0)
   })
   return result
 })
+
 
 const saveHabitsToLocalStorage = () => {
   localStorage.setItem('habitData', JSON.stringify(habits))
@@ -215,6 +220,14 @@ const loadHabitsFromLocalStorage = () => {
   }
 }
 
+const selectDate = (date) => {
+  selectedDate.value = date
+  isDailyMode.value = true
+}
+
+const displayDates = computed(() =>
+  weekDates.value.map(date => format(date, 'M/d')) // 表示用
+)
 
 </script>
 
